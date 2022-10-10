@@ -1,0 +1,9 @@
+<component name="libraryTable">
+  <library name="reactivemongo_3-1.1.0-noshaded-RC6">
+    <CLASSES>
+      <root url="jar://$PROJECT_DIR$/lib/reactivemongo_3-1.1.0-noshaded-RC6.jar!/" />
+    </CLASSES>
+    <JAVADOC />
+    <SOURCES />
+  </library>
+</component>
