@@ -55,26 +55,3 @@ class MongoExport(database: String,
     }
   }
 }
-
-object MongoExport extends App {
-  val database = "teste_db"
-  val collection = "col_db"
-  val host = Some("localhost")
-  val port = Some(8080)
-
-  val mExp = new MongoExport(database, collection, host = host, port = port, clear = true)
-  val doc1 = """{ "color": "red", "qty": 5 }"""
-  val doc2 = """{ "color": "blue", "qty": 8 }"""
-  val doc3 = """{ "color": "white", "qty": 10 }"""
-  val docs = Seq(doc1, doc2, doc3)
-
-  mExp.insertDocument(doc1) match
-    case Success(id) => println(s"written! id=$id")
-    case Failure(exception) => println(s"Error: $exception")
-
-  mExp.insertDocuments(docs) match
-    case Success(ids) => ids.foreach(id => println(s"written! id=$id"))
-    case Failure(exception) => println(s"Error: $exception")
-
-  mExp.close()
-}
