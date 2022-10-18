@@ -28,24 +28,28 @@ case class X2M_Parameters(xmlDir: String,
 
 class Xml2Mongo {
   def exportFiles(parameters: X2M_Parameters): Try[Unit] = {
-    Try {
-      val mExport: MongoExport = new MongoExport(parameters.database, parameters.collection, parameters.clear,
-        parameters.host, parameters.port, parameters.user, parameters.password)
-      val xmls: Set[File] = getFiles(new File(parameters.xmlDir), parameters.xmlFilter, parameters.recursive)
-      val xmlFileEncod: String = parameters.xmlFileEncod.getOrElse("utf-8")
-      val expFile: Option[BufferedWriter] = parameters.logFile.map(name => new BufferedWriter(new FileWriter(name)))
+    Try{
+      if (getFiles(new File(parameters.xmlDir), parameters.xmlFilter, parameters.recursive).isEmpty){
+        throw new Exception("Empty directory!")
+      } else {
+        val mExport: MongoExport = new MongoExport(parameters.database, parameters.collection, parameters.clear,
+          parameters.host, parameters.port, parameters.user, parameters.password)
+        val xmls: Set[File] = getFiles(new File(parameters.xmlDir), parameters.xmlFilter, parameters.recursive)
+        val xmlFileEncod: String = parameters.xmlFileEncod.getOrElse("utf-8")
+        val expFile: Option[BufferedWriter] = parameters.logFile.map(name => new BufferedWriter(new FileWriter(name)))
 
-      if parameters.bulkWrite then exportFiles(mExport, xmls, xmlFileEncod, expFile)
-      else xmls.foreach {
-        xml =>
-          exportFile(mExport, xml, xmlFileEncod, expFile) match {
-            case Success(_) => println(s"+++xml=$xml")
-            case Failure(exception) => println(s"export files error: ${exception.getMessage}")
-          }
+        if parameters.bulkWrite then exportFiles(mExport, xmls, xmlFileEncod, expFile)
+        else xmls.foreach {
+          xml =>
+            exportFile(mExport, xml, xmlFileEncod, expFile) match {
+              case Success(_) => println(s"+++xml=$xml")
+              case Failure(exception) => println(s"export files error: ${exception.getMessage}")
+            }
+        }
+
+        expFile.foreach(_.close())
+        mExport.close()
       }
-
-      expFile.foreach(_.close())
-      mExport.close()
     }
   }
 
@@ -189,7 +193,7 @@ object Xml2Mongo {
         println("Export was successfull!")
         System.exit(0)
       case Failure(exception) =>
-        println(s"Export error: ${exception.toString}")
+        println(s"Export alert: ${exception.toString}")
         System.exit(1)
     }
   }
