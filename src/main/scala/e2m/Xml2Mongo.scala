@@ -9,7 +9,7 @@ import java.io.{BufferedWriter, File, FileWriter}
 import scala.annotation.tailrec
 import scala.io.{BufferedSource, Source}
 import scala.util.{Failure, Success, Try}
-import scala.xml.Elem
+import scala.xml.{Elem, Node, NodeSeq, XML}
 import scala.xml.XML.loadString
 
 case class X2M_Parameters(xmlDir: String,
@@ -38,15 +38,22 @@ class Xml2Mongo {
         val xmlFileEncod: String = parameters.xmlFileEncod.getOrElse("utf-8")
         val expFile: Option[BufferedWriter] = parameters.logFile.map(name => new BufferedWriter(new FileWriter(name)))
 
-        if parameters.bulkWrite then exportFiles(mExport, xmls, xmlFileEncod, expFile)
-        else xmls.foreach {
-          xml =>
-            exportFile(mExport, xml, xmlFileEncod, expFile) match {
-              case Success(_) => println(s"+++xml=$xml")
-              case Failure(exception) => println(s"export files error: ${exception.getMessage}")
-            }
-        }
+          for (xml <- xmls) {
+            val xmlLoaded = XML.loadFile(xml)
+            val xPath = xmlLoaded \ "PubmedArticle"
+            val listFiles: Seq[File] = xPath.map(f => new File(f.toString()))
 
+            if parameters.bulkWrite then exportFiles(mExport, listFiles.toSet, xmlFileEncod, expFile)
+            else {
+              for (doc <- listFiles) {
+
+                exportFile(mExport, doc, xmlFileEncod, expFile) match {
+                  case Success(_) => ()
+                  case Failure(exception) => println(s"export files error: ${exception.getMessage}")
+                }
+              }
+            }
+          }
         expFile.foreach(_.close())
         mExport.close()
       }
@@ -99,11 +106,7 @@ class Xml2Mongo {
   private def getFileContent(xml: File,
                              xmlFileEncod: String): Try[String] = {
     Try {
-      val source: BufferedSource = Source.fromFile(xml, xmlFileEncod)
-      val content: String = source.getLines().mkString("\n")
-      source.close()
-
-      content
+      xml.toString
     }
   }
 
@@ -126,6 +129,34 @@ class Xml2Mongo {
       case _ => throw new IllegalArgumentException(file.getCanonicalPath)
     }
   }
+
+  //-----------------------------------------------------------------------------------------------------------
+
+  //  private def getFileContentBulkWrite(xmls: Set[File], xmlFileEncod: String): Try[Set[File]] = {
+  //    Try {
+  //
+  //      val testXmlDoc = getDocumentsBulkWrite(xmls)
+  //      testXmlDoc.map(f => f.toSet)
+  //
+  //    }
+  //  }
+  //
+  //  private def getDocumentsBulkWrite(xmls: Set[File]): Set[File] = {
+  //
+  //
+  //    xmls.map(f =>
+  //
+  //
+  //
+  //
+  //    )
+  //    val xmlLoaded = XML.loadFile(xml)
+  //    val xPath = xmlLoaded \ "PubmedArticle"
+  //    val listFiles: Seq[File] = xPath.map(f => new File(f.toString()))
+  //    listFiles
+  //  }
+
+  //-----------------------------------------------------------------------------------------------------------
 
   def xml2json(xml: String): Try[String] = {
     Try {
