@@ -28,8 +28,8 @@ case class X2M_Parameters(xmlDir: String,
 
 class Xml2Mongo {
   def exportFiles(parameters: X2M_Parameters): Try[Unit] = {
-    Try{
-      if (getFiles(new File(parameters.xmlDir), parameters.xmlFilter, parameters.recursive).isEmpty){
+    Try {
+      if (getFiles(new File(parameters.xmlDir), parameters.xmlFilter, parameters.recursive).isEmpty) {
         throw new Exception("Empty directory!")
       } else {
         val mExport: MongoExport = new MongoExport(parameters.database, parameters.collection, parameters.clear,
@@ -38,26 +38,30 @@ class Xml2Mongo {
         val xmlFileEncod: String = parameters.xmlFileEncod.getOrElse("utf-8")
         val expFile: Option[BufferedWriter] = parameters.logFile.map(name => new BufferedWriter(new FileWriter(name)))
 
-          for (xml <- xmls) {
-            val xmlLoaded = XML.loadFile(xml)
-            val xPath = xmlLoaded \ "PubmedArticle"
-            val listFiles: Seq[File] = xPath.map(f => new File(f.toString()))
+        if parameters.bulkWrite then xmls.foreach(f => exportFiles(mExport, extractDocXml(f, xmlFileEncod), xmlFileEncod, expFile))
+        else xmls.foreach(xml =>
+          val xmlSetFile = extractDocXml(xml, xmlFileEncod)
 
-            if parameters.bulkWrite then exportFiles(mExport, listFiles.toSet, xmlFileEncod, expFile)
-            else {
-              for (doc <- listFiles) {
-
-                exportFile(mExport, doc, xmlFileEncod, expFile) match {
-                  case Success(_) => ()
-                  case Failure(exception) => println(s"export files error: ${exception.getMessage}")
-                }
-              }
+          for (docXml <- xmlSetFile) {
+            exportFile(mExport, docXml, xmlFileEncod, expFile) match {
+              case Success(_) => ()
+              case Failure(exception) => println(s"export files error: ${exception.getMessage}")
             }
           }
+        )
         expFile.foreach(_.close())
         mExport.close()
       }
     }
+  }
+
+  def extractDocXml(xmlFile: File, xmlFileEncod: String): Set[File] = {
+
+    val xmlLoaded = XML.load(new java.io.InputStreamReader(new java.io.FileInputStream(xmlFile), xmlFileEncod))
+    val xPath = xmlLoaded \ "PubmedArticle"
+
+    if xPath.nonEmpty then xPath.map(f => new File(f.toString())).toSet
+    else xmlLoaded.map(f => new File(f.toString())).toSet
   }
 
   @tailrec
@@ -69,7 +73,7 @@ class Xml2Mongo {
       val bufferSize: Int = 500
       val (pref: Set[File], suff: Set[File]) = xmls.splitAt(bufferSize)
       val pref1: Set[(File, File)] = pref.map(x => (x, x))
-      val pref2: Set[(String, Try[String])] = pref1.map(f => (f._1.getAbsolutePath, getFileContent(f._2, xmlFileEncod)))
+      val pref2: Set[(String, Try[String])] = pref1.map(f => (f._1.getAbsolutePath, getFileString(f._2)))
       val pref3: Set[(String, Try[String])] = pref2.map(f => (f._1, f._2.flatMap(xml2json)))
       val (goods, bads) = pref3.span(_._2.isSuccess)
 
@@ -90,7 +94,7 @@ class Xml2Mongo {
                          xmlFileEncod: String,
                          logFile: Option[BufferedWriter]): Try[String] = {
     val result: Try[String] = for {
-      content <- getFileContent(xml, xmlFileEncod)
+      content <- getFileString(xml)
       json <- xml2json(content)
       id <- mExport.insertDocument(json)
     } yield id
@@ -103,12 +107,7 @@ class Xml2Mongo {
     }
   }
 
-  private def getFileContent(xml: File,
-                             xmlFileEncod: String): Try[String] = {
-    Try {
-      xml.toString
-    }
-  }
+  private def getFileString(xml: File): Try[String] =  Try{ xml.toString }
 
   private def getFiles(file: File,
                        filter: Option[String],
@@ -129,34 +128,6 @@ class Xml2Mongo {
       case _ => throw new IllegalArgumentException(file.getCanonicalPath)
     }
   }
-
-  //-----------------------------------------------------------------------------------------------------------
-
-  //  private def getFileContentBulkWrite(xmls: Set[File], xmlFileEncod: String): Try[Set[File]] = {
-  //    Try {
-  //
-  //      val testXmlDoc = getDocumentsBulkWrite(xmls)
-  //      testXmlDoc.map(f => f.toSet)
-  //
-  //    }
-  //  }
-  //
-  //  private def getDocumentsBulkWrite(xmls: Set[File]): Set[File] = {
-  //
-  //
-  //    xmls.map(f =>
-  //
-  //
-  //
-  //
-  //    )
-  //    val xmlLoaded = XML.loadFile(xml)
-  //    val xPath = xmlLoaded \ "PubmedArticle"
-  //    val listFiles: Seq[File] = xPath.map(f => new File(f.toString()))
-  //    listFiles
-  //  }
-
-  //-----------------------------------------------------------------------------------------------------------
 
   def xml2json(xml: String): Try[String] = {
     Try {
