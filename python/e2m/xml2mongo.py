@@ -32,17 +32,18 @@ class X2M_Parameters:
 class Xml2Mongo:
 
     def export_files(self: X2M_Parameters):
-        try:
-            export_mongo: MongoExport = MongoExport(self.database, self.collection, self.clear,
-                                                    self.host, self.port, self.user, self.password)
-            os.chdir(self.xmlDir)
-            path_xml = os.listdir()
-            xml_encod: str = self.xmlFileEncod or "utf-8"
 
-            print(f"\n{datetime.datetime.now().strftime('Export start time %H:%M')}\nTotal files for export:"
-                  f" {len(path_xml)}\n")
+        export_mongo: MongoExport = MongoExport(self.database, self.collection, self.clear,
+                                                self.host, self.port, self.user, self.password)
+        os.chdir(self.xmlDir)
+        path_xml = os.listdir()
+        xml_encod: str = self.xmlFileEncod or "utf-8"
 
-            for xml in (xml for xml in path_xml if xml.endswith(".xml")):
+        print(f"\n{datetime.datetime.now().strftime('Export start time %H:%M')}\nTotal files for export:"
+              f" {len(path_xml)}\n")
+
+        for xml in (xml for xml in path_xml if xml.endswith(".xml")):
+            try:
                 with open(xml, 'r') as xml_file:
                     tree = ET.parse(xml_file)
                     root = tree.getroot()
@@ -52,15 +53,11 @@ class Xml2Mongo:
                         doc = xmltodict.parse(xml_str, attr_prefix='', cdata_key='text')
                         export_mongo.insert(doc)
                 xml_file.close()
-
-        except:
-            logging.exception("Error Export")
-        else:
-            print(f"\n***Export completed!***\n{datetime.datetime.now().strftime('Export end time %H:%M')}")
+            except Exception as e:
+                print(e)
 
 
 class main:
-
     parse = argparse.ArgumentParser(description='Argumentos requeridos: -xmlDir, -database, -collection.')
 
     parse.add_argument('-xmlDir', action='store', dest='xmlDir',
