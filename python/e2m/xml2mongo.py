@@ -36,7 +36,6 @@ class Xml2Mongo:
         os.chdir(self.xmlDir)
         path_xml = os.listdir()
 
-        xml_encod: str = self.xmlFileEncod or "utf-8"
         export_mongo: MongoExport = MongoExport(self.database, self.collection, self.clear,
                                                 self.host, self.port, self.user, self.password)
 
@@ -47,9 +46,9 @@ class Xml2Mongo:
             try:
                 print(f"Name File: {xml}")
                 for row in tqdm(Xml2Mongo.str2elem(xml).findall(self.tagMain)):
-                    xml_str = ET.tostring(row, encoding=xml_encod)
+                    xml_str = ET.tostring(row, encoding=self.xmlFileEncod)
                     doc = xmltodict.parse(xml_str, attr_prefix='', cdata_key='text')
-                    export_mongo.insert(doc)
+                    export_mongo.insert_one(doc)
             except Exception as e:
                 print(e)
 
@@ -64,15 +63,15 @@ class Xml2Mongo:
                 xml_file.close()
                 return xml_re
 
-        except Exception:
-            print(f"Name File: {xml}\nFILE CONVERSION ERROR")
+        except Exception as exception:
+            print(f"Name File: {xml}\nFILE CONVERSION ERROR - Exception: {exception}")
 
 
 class main:
     parse = argparse.ArgumentParser(description='Argumentos requeridos: -xmlDir, -database, -collection.')
 
-    parse.add_argument('--tagMain', action='store', dest='tagMain',
-                       required=True, help='Retorna a lista contendo todos os elementos correspondentes na ordem do '
+    parse.add_argument('--tagMain', action='store', dest='tagMain', default='PubmedArticle',
+                       required=False, help='Retorna a lista contendo todos os elementos correspondentes na ordem do '
                                            'documento.'),
 
     parse.add_argument('-xmlDir', action='store', dest='xmlDir',
@@ -100,7 +99,7 @@ class main:
                        required=False,
                        help='Se presente, usa a expressão regular para filtrar os nomes de arquivo xml desejados')
 
-    parse.add_argument('-xmlFileEncod', action='store', dest='xmlFileEncod',
+    parse.add_argument('-xmlFileEncod', action='store', dest='xmlFileEncod', default='utf-8',
                        required=False, help='Se presente, indique a codificação do arquivo xml. O padrão é utf-8')
 
     parse.add_argument('-logFile', action='store', dest='logFile',

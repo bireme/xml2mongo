@@ -17,7 +17,7 @@ class MongoExport:
         }
         self.__coll = self.__dbase.get_collection(collection)
 
-    def insert(self, document):
+    def insert_one(self, document):
         self.__coll.insert_one(document)
 
     def close(self):
